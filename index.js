@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-
+const recipeSchema = require('./recipeValidation');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -20,74 +20,98 @@ const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 db.once("open", () => console.log("Connected to MongoDB"));
 
-// Recipe Schema
-const recipeSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  ingredients: { type: [String], required: true },
-  instructions: { type: String, required: true },
-});
-
 const Recipe = mongoose.model("Recipe", recipeSchema);
 
-// GET all recipes
-app.get("/recipes", async (req, res) => {
-  const recipes = await Recipe.find();
-  res.json(recipes);
-});
-
-// GET a single recipe by ID
-app.get("/recipes/:id", async (req, res) => {
+// GET route to fetch all recipes
+app.get('/recipes', async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.id);
-    if (!recipe) return res.status(404).json({ message: "Recipe not found" });
-    res.json(recipe);
-  } catch (error) {
-    res.status(400).json({ message: "Invalid recipe ID" });
+    const recipes = await Recipe.find();
+    res.status(200).json(recipes);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch recipes' });
   }
 });
 
-// POST a new recipe
-app.post("/recipes", async (req, res) => {
+// GET route to fetch a single recipe by ID
+app.get('/recipes/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Validate if the ID is a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid recipe ID' });
+  }
+
   try {
-    const { title, ingredients, instructions } = req.body;
-    if (!title || !ingredients || !instructions) {
-      return res.status(400).json({ message: "All fields are required" });
+    const recipe = await Recipe.findById(id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+    res.status(200).json(recipe);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching recipe' });
+  }
+});
+
+
+// POST route for creating a recipe
+app.post('/recipes', async (req, res) => {
+  try {
+    // Validate request body using Joi
+    const { error } = recipeSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
     }
 
-    const newRecipe = new Recipe({ title, ingredients, instructions });
+    // Proceed to save the recipe if validation passes
+    const newRecipe = new Recipe(req.body);
     await newRecipe.save();
     res.status(201).json(newRecipe);
-  } catch (error) {
-    res.status(500).json({ message: "Error saving recipe" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// PUT (Update) a recipe by ID
-app.put("/recipes/:id", async (req, res) => {
+// PUT route for updating a recipe
+app.put('/recipes/:id', async (req, res) => {
   try {
-    const { title, ingredients, instructions } = req.body;
-    const updatedRecipe = await Recipe.findByIdAndUpdate(
-      req.params.id,
-      { title, ingredients, instructions },
-      { new: true }
-    );
+    const { error } = recipeSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
 
-    if (!updatedRecipe) return res.status(404).json({ message: "Recipe not found" });
+    const updatedRecipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedRecipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
     res.json(updatedRecipe);
-  } catch (error) {
-    res.status(400).json({ message: "Invalid recipe ID" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// DELETE a recipe by ID
-app.delete("/recipes/:id", async (req, res) => {
-  try {
-    const deletedRecipe = await Recipe.findByIdAndDelete(req.params.id);
-    if (!deletedRecipe) return res.status(404).json({ message: "Recipe not found" });
+// DELETE route to delete a recipe by ID
+app.delete('/recipes/:id', async (req, res) => {
+  const { id } = req.params;
 
-    res.json({ message: "Recipe deleted successfully" });
-  } catch (error) {
-    res.status(400).json({ message: "Invalid recipe ID" });
+  // Validate if the ID is a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid recipe ID' });
+  }
+
+  try {
+    const deletedRecipe = await Recipe.findByIdAndDelete(id);
+    if (!deletedRecipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+    res.status(200).json({ message: 'Recipe deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error deleting recipe' });
   }
 });
 

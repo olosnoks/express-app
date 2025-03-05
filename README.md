@@ -306,3 +306,14 @@ restart policy
 ```bash
 sudo docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' mongodb
 ```
+
+### data validation/error handling
+
+```bash
+npm i joi
+```
+### create schema
+
+/recipeValidation.js
+
+
