@@ -1,12 +1,64 @@
-# self hosted web app on ubuntu vps
+# Recipe Management Application (SPA) Outline
+## Frontend (React)
 
-tldr: use credit card to buy vps. 2 cores 2gb 25gb should be fine
+### Single Page Application:
+        Routes for browsing recipes, viewing details, and adding new recipes.
+        Implemented React Router for client-side routing.
+        Used Bootstrap or Tailwind CSS for styling.
 
-## spin up ubuntu iso
+### Features Implemented:
+        Recipe Listing: Browse all recipes.
+        Recipe Detail Page: View specific recipe details.
+        Add Recipe Form: Form to add a new recipe (title, ingredients, cooking instructions, and optional cover image).
+        Search Functionality: Search recipes by title or ingredient.
 
-### see hardening.sh
+## Backend (Node.js + Express + MongoDB)
 
-ssh or console into ubuntu vm
+    ### Node.js and Express Setup:
+        Set up a basic Express server to handle API routes.
+        Configured to run using PM2 (with automatic restart on reboot).
+        Connected to MongoDB for persistent storage.
+
+### API Endpoints:
+        GET /recipes: Retrieve all recipes.
+        GET /recipes/:id: Retrieve a specific recipe by ID.
+        POST /recipes: Add a new recipe to the database.
+        PUT /recipes/:id: Update an existing recipe.
+        DELETE /recipes/:id: Delete a specific recipe.
+
+### MongoDB Integration:
+        MongoDB running in a Docker container.
+        Successfully connected to MongoDB and the API can interact with it.
+        Docker restart policy set to ensure MongoDB container starts on system reboot.
+        Data validation and error handling added for API routes.
+
+## Deployment and Automation:
+
+### PM2 for API:
+        The API is being managed by PM2 for process management and auto-restart on failure or reboot.
+
+### MongoDB in Docker:
+        MongoDB is running inside a Docker container.
+        Docker is configured to restart MongoDB automatically on system reboots.
+
+### NGINX as Reverse Proxy:
+        NGINX is set up as a reverse proxy to handle incoming HTTP requests and forward them to the Express API running on port 5000.
+        NGINX is configured to serve the React frontend and API on the same domain, with proper routing.
+        SSL configuration with OpenSSL: Used OpenSSL to generate SSL certificates for secure HTTPS traffic.
+        The frontend React app is served statically by NGINX, while API requests are forwarded to the backend Express server.
+
+### Backup & Restore:
+        Still need to configure a backup strategy for MongoDB (e.g., using mongodump for MongoDB backups).
+        Consider automated backups and maybe setting up PM2 for backup management.
+
+## Next Steps / Features to Implement:
+
+    Backup Strategy: Set up MongoDB backups (manual or automated).
+    Frontend Enhancements: Improve UI/UX, add features like image uploads for recipes.
+    Search Functionality: Enhance search with MongoDB’s full-text search or use external services.
+    State Management: Implement Context API or Redux to manage the app state efficiently.
+    Deploy: Set up deployment on platforms like Heroku, Vercel, AWS, etc.
+    Documentation: Finalize setup instructions and README with clear deployment and usage guidelines.
 
 # backend
 
