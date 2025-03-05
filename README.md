@@ -27,15 +27,15 @@ Configured to run using PM2 (with automatic restart on reboot).
 Connected to MongoDB for persistent storage.
 
 ### API Endpoints:
-GET /recipes: Retrieve all recipes.
+```GET /recipes:``` Retrieve all recipes.
 
-GET /recipes/:id: Retrieve a specific recipe by ID.
+```GET /recipes/:id:``` Retrieve a specific recipe by ID.
 
-POST /recipes: Add a new recipe to the database.
+```POST /recipes:``` Add a new recipe to the database.
 
-PUT /recipes/:id: Update an existing recipe.
+```PUT /recipes/:id:``` Update an existing recipe.
 
-DELETE /recipes/:id: Delete a specific recipe.
+```DELETE /recipes/:id:``` Delete a specific recipe.
 
 ### MongoDB Integration:
 MongoDB running in a Docker container.
