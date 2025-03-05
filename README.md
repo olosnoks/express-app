@@ -1,6 +1,6 @@
 # self hosted web app on ubuntu vps
 
-tldr: use credit card buy, vps. 2 cores 2gb 25gb should be fine
+tldr: use credit card to buy vps. 2 cores 2gb 25gb should be fine
 
 ## spin up ubuntu iso
 
