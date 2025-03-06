@@ -34,8 +34,6 @@ npm init -y
 npm i express
 ```
 
-#### Create a server.js
-
 #### Run server
 
 ```bash
@@ -68,10 +66,6 @@ pm2 save
 sudo ufw allow 3000/tcp
 ```
 
-#### Connected to MongoDB for persistent storage.
-
-
-
 ### API Endpoints:
 
 ```GET /recipes:``` Retrieve all recipes.
@@ -84,15 +78,13 @@ sudo ufw allow 3000/tcp
 
 ```DELETE /recipes/:id:``` Delete a specific recipe.
 
-### MongoDB Integration:
+### Connected to MongoDB for persistent storage.:
 
 #### MongoDB running in a Docker container.
 
 ```bash
 npm i mongoose dotenv
 ```
-
-#### create .env
 
 docker
 
@@ -160,19 +152,12 @@ restart policy
 ```bash
 sudo docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' mongodb
 ```
-always
-
-
 
 #### Data validation
 
 ```bash
 npm i joi
 ```
-
-#### Create schema
-
-/recipeValidation.js
 
 ### Reverse proxy
 
@@ -203,8 +188,6 @@ server {
     }
 }
 ```
-
-Save and exit
 
 #### Enable site && restart nginx
 
@@ -258,8 +241,6 @@ server {
 }
 ```
 
-save and exit
-
 #### restart nginx
 
 ```bash
@@ -305,7 +286,7 @@ Deploy: Set up deployment on platforms like Heroku, Vercel, AWS, etc.
 
 Documentation: Finalize setup instructions and README with clear deployment and usage guidelines.
 
-# bash
+## bash
 
 set up express
 
