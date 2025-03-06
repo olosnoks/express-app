@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const recipeSchema = require('./recipeValidation');
+const Recipe = require("./recipeModel"); // Assuming recipeModel is still used
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -19,8 +19,6 @@ mongoose.connect(process.env.MONGO_URI, {
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 db.once("open", () => console.log("Connected to MongoDB"));
-
-const Recipe = mongoose.model("Recipe", recipeSchema);
 
 // GET route to fetch all recipes
 app.get('/recipes', async (req, res) => {
@@ -54,18 +52,29 @@ app.get('/recipes/:id', async (req, res) => {
   }
 });
 
-
 // POST route for creating a recipe
 app.post('/recipes', async (req, res) => {
   try {
-    // Validate request body using Joi
-    const { error } = recipeSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
+    const { title, ingredients, instructions } = req.body;
+
+    // Basic validation (you can add more as needed)
+    if (!title || title.length < 3 || title.length > 100) {
+      return res.status(400).json({ message: 'Title must be between 3 and 100 characters.' });
+    }
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      return res.status(400).json({ message: 'Ingredients must be a non-empty array.' });
+    }
+    if (!instructions || instructions.length < 10) {
+      return res.status(400).json({ message: 'Instructions must be at least 10 characters long.' });
     }
 
-    // Proceed to save the recipe if validation passes
-    const newRecipe = new Recipe(req.body);
+    const newRecipe = new Recipe({
+      title,
+      ingredients,
+      instructions,
+      created_at: Date.now(), // Set the creation date manually
+    });
+
     await newRecipe.save();
     res.status(201).json(newRecipe);
   } catch (err) {
@@ -76,13 +85,22 @@ app.post('/recipes', async (req, res) => {
 
 // PUT route for updating a recipe
 app.put('/recipes/:id', async (req, res) => {
-  try {
-    const { error } = recipeSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
-    }
+  const { id } = req.params;
+  const { title, ingredients, instructions } = req.body;
 
-    const updatedRecipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  // Basic validation (you can add more as needed)
+  if (!title || title.length < 3 || title.length > 100) {
+    return res.status(400).json({ message: 'Title must be between 3 and 100 characters.' });
+  }
+  if (!Array.isArray(ingredients) || ingredients.length === 0) {
+    return res.status(400).json({ message: 'Ingredients must be a non-empty array.' });
+  }
+  if (!instructions || instructions.length < 10) {
+    return res.status(400).json({ message: 'Instructions must be at least 10 characters long.' });
+  }
+
+  try {
+    const updatedRecipe = await Recipe.findByIdAndUpdate(id, { title, ingredients, instructions }, { new: true });
     if (!updatedRecipe) {
       return res.status(404).json({ message: 'Recipe not found' });
     }
@@ -119,3 +137,4 @@ app.delete('/recipes/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
