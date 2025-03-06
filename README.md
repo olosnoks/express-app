@@ -63,7 +63,7 @@ pm2 save
 #### Firewall
 
 ```bash
-sudo ufw allow 3000/tcp
+sudo ufw allow 5000/tcp
 ```
 
 ### API Endpoints:
