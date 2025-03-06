@@ -20,13 +20,60 @@ Search Functionality: Search recipes by title or ingredient.
 ## Backend (Node.js + Express + MongoDB)
 
 ### Node.js and Express Setup:
-Set up a basic Express server to handle API routes.
+#### Set up a basic Express server to handle API routes.
 
-Configured to run using PM2 (with automatic restart on reboot).
+```bash
+sudo apt install nodejs npm -y
+```
 
-Connected to MongoDB for persistent storage.
+Create project
+
+```bash
+mkdir express-app && cd express-app
+npm init -y
+npm i express
+```
+
+#### Create a server.js
+
+#### Run server
+
+```bash
+node server.js
+```
+
+#### Configured to run using PM2 (with automatic restart on reboot).
+
+```bash
+npm install -g pm2
+```
+
+#### Start server with pm2
+
+```bash
+pm2 start server.js --name express-app
+```
+
+#### pm2 restart on boot
+
+```bash
+pm2 startup
+sudo env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd -u admin --hp /home/admin
+pm2 save
+```
+
+#### Firewall
+
+```bash
+sudo ufw allow 3000/tcp
+```
+
+#### Connected to MongoDB for persistent storage.
+
+
 
 ### API Endpoints:
+
 ```GET /recipes:``` Retrieve all recipes.
 
 ```GET /recipes/:id:``` Retrieve a specific recipe by ID.
@@ -38,13 +85,188 @@ Connected to MongoDB for persistent storage.
 ```DELETE /recipes/:id:``` Delete a specific recipe.
 
 ### MongoDB Integration:
-MongoDB running in a Docker container.
 
-Successfully connected to MongoDB and the API can interact with it.
+#### MongoDB running in a Docker container.
 
-Docker restart policy set to ensure MongoDB container starts on system reboot.
+```bash
+npm i mongoose dotenv
+```
 
-Data validation and error handling added for API routes.
+#### create .env
+
+docker
+
+```bash
+sudo apt install docker.io
+```
+
+mongoDB container
+
+```bash
+sudo docker run -d -p 27017:27017 --name mongodb mongo
+```
+
+check
+
+```bash
+sudo docker ps
+```
+
+restart express
+
+```bash
+node run dev
+```
+
+#### Successfully connected to MongoDB and the API can interact with it.
+
+
+test POST
+
+```bash
+curl -X POST http://10.0.0.57:5000/recipes \
+-H "Content-Type: application/json" \
+-d '{
+  "title": "Chicken Alfredo",
+  "ingredients": ["chicken", "heavy cream", "pasta", "garlic", "parmesan"],
+  "instructions": "Cook the chicken, prepare the sauce, and combine with pasta."
+}'
+```
+
+test GET
+
+```bash
+curl http://10.0.0.57:5000/recipes
+```
+
+
+
+#### Docker restart policy set to ensure MongoDB container starts on system reboot.
+
+```bash
+sudo docker stop 9342148c1485
+sudo docker rm 9342148c1485
+sudo docker run --name mongodb -d --restart=always -p 27017:27017 mongo
+```
+
+check
+
+```bash
+sudo docker ps
+```
+
+restart policy
+
+```bash
+sudo docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' mongodb
+```
+always
+
+
+
+#### Data validation
+
+```bash
+npm i joi
+```
+
+#### Create schema
+
+/recipeValidation.js
+
+### Reverse proxy
+
+```bash
+sudo apt install nginx -y
+```
+
+#### nginx file
+
+```bash
+sudo nano /etc/nginx/sites-available/express-app
+```
+
+Config file
+
+```nginx
+server {
+    listen 80;
+    server_name your_domain_or_ip;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Save and exit
+
+#### Enable site && restart nginx
+
+```bash
+sudo ln -s /etc/nginx/sites-available/express-app /etc/nginx/sites-enable
+sudo systemctl restart nginx
+```
+
+#### ssl
+
+```bash
+sudo apt install openssl -y
+```
+
+self signed cert
+
+```bash
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/selfsigned.key -out /etc/ssl/certs/selfsigned.crt
+```
+
+Configure nginx for ssl
+
+```bash
+sudo nano /etc/nginx/sites-available/express-app
+```
+Update config
+```nginx
+server {
+    listen 443 ssl;
+    server_name 10.0.0.57;
+
+    ssl_certificate /etc/ssl/certs/selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/selfsigned.key;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name 10.0.0.57;
+
+    return 301 https://$host$request_uri;
+}
+```
+
+save and exit
+
+#### restart nginx
+
+```bash
+sudo systemctl restart nginx
+```
+
+
 
 ## Deployment and Automation:
 
@@ -57,13 +279,13 @@ MongoDB is running inside a Docker container.
 Docker is configured to restart MongoDB automatically on system reboots.
 
 ### NGINX as Reverse Proxy:
-NGINX is set up as a reverse proxy to handle incoming HTTP requests and forward them to thExpress API running on port 5000.
+NGINX is set up as a reverse proxy to handle incoming HTTP requests and forward them to the Express API running on port 5000.
 
-NGINX is configured to serve the React frontend and API on the same domain, with properoing.
+NGINX is configured to serve the React frontend and API on the same domain, with proper routing.
 
-SSL configuration with OpenSSL: Used OpenSSL to generate SSL certificates for secure HPSraffic.
+SSL configuration with OpenSSL: Used OpenSSL to generate SSL certificates for secure HTTPS traffic.
 
-The frontend React app is served statically by NGINX, while API requests are forwardedo the backend Express server.
+The frontend React app is served statically by NGINX, while API requests are forwarded to the backend Express server.
 
 ### Backup & Restore:
 Still need to configure a backup strategy for MongoDB (e.g., using mongodump for MongoDB backups).
@@ -83,15 +305,15 @@ Deploy: Set up deployment on platforms like Heroku, Vercel, AWS, etc.
 
 Documentation: Finalize setup instructions and README with clear deployment and usage guidelines.
 
-# backend
+# bash
 
-## set up express
+set up express
 
 ```bash
 sudo apt install nodejs npm -y
 ```
 
-### create project
+create project
 
 ```bash
 mkdir express-app && cd express-app
@@ -99,9 +321,7 @@ npm init -y
 npm i express
 ```
 
-### create a server.js
-
-### run server
+run server
 
 ```bash
 node server.js
@@ -109,19 +329,19 @@ node server.js
 
 Ctrl+C
 
-### install pm2 globally
+install pm2 globally
 
 ```bash
 npm install -g pm2
 ```
 
-### start server with pm2
+start server with pm2
 
 ```bash
 pm2 start server.js --name express-app
 ```
 
-### pm2 restart on boot
+pm2 restart on boot
 
 ```bash
 pm2 startup
@@ -129,19 +349,19 @@ sudo env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup sys
 pm2 save
 ```
 
-### firewall
+firewall
 
 ```bash
 sudo ufw allow 3000/tcp
 ```
 
-## reverse proxy
+reverse proxy
 
 ```bash
 sudo apt install nginx -y
 ```
 
-### nginx file
+nginx file
 
 ```bash
 sudo nano /etc/nginx/sites-available/express-app
@@ -167,14 +387,14 @@ server {
 
 save and exit
 
-### enable site && restart nginx
+enable site && restart nginx
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/express-app /etc/nginx/sites-enable
 sudo systemctl restart nginx
 ```
 
-### ssl
+ssl
 
 ```bash
 sudo apt install openssl -y
@@ -221,31 +441,25 @@ server {
 
 save and exit
 
-### restart nginx
+restart nginx
 
 ```bash
 sudo systemctl restart nginx
 ```
 
-## RESTful
+RESTful
 
 ```bash
 npm i cors body-parser nodemon
 ```
 
-### create index.js
-
-## monogoDB
+monogoDB
 
 ```bash
 npm i mongoose dotenv
 ```
 
-### create .env
-
-modify index.js to load var and connect to DB
-
-### docker
+docker
 
 ```bash
 sudo apt install docker.io
@@ -295,7 +509,7 @@ sudo docker rm 9342148c1485
 sudo docker run --name mongodb -d --restart=always -p 27017:27017 mongo
 ```
 
-### check
+check
 
 ```bash
 sudo docker ps
@@ -307,13 +521,8 @@ restart policy
 sudo docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' mongodb
 ```
 
-### data validation/error handling
+data validation
 
 ```bash
 npm i joi
 ```
-### create schema
-
-/recipeValidation.js
-
-
