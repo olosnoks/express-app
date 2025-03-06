@@ -13,23 +13,6 @@ services:
     ports:
       - "27017:27017"
 
-  api:
-    build: .
-    container_name: api
-    restart: always
-    depends_on:
-      - mongodb
-    environment:
-      - MONGO_URI=mongodb://mongoUser:mongoPassword@mongodb:27017/recipeDB
-      - NODE_ENV=production
-      - PORT=5000
-    ports:
-      - "5000:5000"
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: ["pm2-runtime", "index.js"]
-
 volumes:
   mongo-data:
     driver: local
