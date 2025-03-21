@@ -1,66 +1,47 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const multer = require('multer');
 const path = require('path');
-require('dotenv').config();
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
+
+// MongoDB Recipe Schema
+const recipeSchema = new mongoose.Schema({
+  title: String,
+  ingredients: [String],
+  instructions: String,
+  image: String
+});
+
+const Recipe = mongoose.model('Recipe', recipeSchema);
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static Files
+// Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
-
-// Mongoose Schema and Model
-const recipeSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  ingredients: { type: [String], required: true },
-  instructions: { type: String, required: true },
-  coverImage: { type: String },
-});
-
-const Recipe = mongoose.model('Recipe', recipeSchema);
-
-// Multer Configuration for Image Uploads
+// Multer config for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'public', 'uploads'));
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, 'public', 'uploads');
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
   },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '_');
+    cb(null, uniqueName);
+  }
 });
+const upload = multer({ storage });
 
-const upload = multer({
-  storage: storage,
-  fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif/;
-    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = fileTypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb('Error: Images Only!');
-    }
-  },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
-});
+// Routes
 
-// API Routes
-
-// Get all recipes
+// GET all recipes
 app.get('/recipes', async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -70,32 +51,40 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// Add a new recipe
+// POST new recipe
 app.post('/recipes', upload.single('coverImage'), async (req, res) => {
-  const { title, ingredients, instructions } = req.body;
-  const coverImage = req.file ? `/uploads/${req.file.filename}` : '';
-
-  const newRecipe = new Recipe({
-    title,
-    ingredients: ingredients.split(',').map(ingredient => ingredient.trim()),
-    instructions,
-    coverImage,
-  });
-
   try {
-    const savedRecipe = await newRecipe.save();
-    res.status(201).json(savedRecipe);
+    const { title, ingredients, instructions } = req.body;
+    const image = req.file ? `/uploads/${req.file.filename}` : '';
+
+    const newRecipe = new Recipe({
+      title,
+      ingredients: ingredients.split(',').map(i => i.trim()),
+      instructions,
+      image
+    });
+
+    await newRecipe.save();
+    res.status(201).json(newRecipe);
   } catch (err) {
+    console.error('Error adding recipe:', err);
     res.status(400).json({ error: 'Failed to add recipe' });
   }
 });
 
-// Serve index.html for all other routes (for SPA)
+// Catch-all route for SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+// Connect to MongoDB and start server
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(() => {
+    console.log('Connected to MongoDB');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
