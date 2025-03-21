@@ -1,18 +1,18 @@
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Static Files
+app.use(express.static(path.join(__dirname, 'public')));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
@@ -20,43 +20,47 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
 })
 .then(() => console.log('Connected to MongoDB'))
-.catch((err) => console.error('MongoDB connection error:', err));
+.catch(err => console.error('MongoDB connection error:', err));
 
 // Mongoose Schema and Model
 const recipeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   ingredients: { type: [String], required: true },
   instructions: { type: String, required: true },
-  image: { type: String },
+  coverImage: { type: String },
 });
 
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
-// Multer setup for image uploads
+// Multer Configuration for Image Uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
+    cb(null, path.join(__dirname, 'public', 'uploads'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
   },
 });
 
-const upload = multer({ storage });
-
-// Routes
-
-// Serve frontend
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /jpeg|jpg|png|gif/;
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = fileTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb('Error: Images Only!');
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
 });
 
-// GET all recipes
+// API Routes
+
+// Get all recipes
 app.get('/recipes', async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -66,75 +70,32 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// POST new recipe with optional image upload
-app.post('/recipes', upload.single('image'), async (req, res) => {
+// Add a new recipe
+app.post('/recipes', upload.single('coverImage'), async (req, res) => {
   const { title, ingredients, instructions } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const coverImage = req.file ? `/uploads/${req.file.filename}` : '';
 
-  if (!title || !ingredients || !instructions) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
-
-  const recipe = new Recipe({
+  const newRecipe = new Recipe({
     title,
-    ingredients: ingredients.split(',').map((item) => item.trim()),
+    ingredients: ingredients.split(',').map(ingredient => ingredient.trim()),
     instructions,
-    image,
+    coverImage,
   });
 
   try {
-    const savedRecipe = await recipe.save();
+    const savedRecipe = await newRecipe.save();
     res.status(201).json(savedRecipe);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save recipe' });
+    res.status(400).json({ error: 'Failed to add recipe' });
   }
 });
 
-// DELETE a recipe
-app.delete('/recipes/:id', async (req, res) => {
-  try {
-    const recipe = await Recipe.findByIdAndDelete(req.params.id);
-    if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
-    }
-    res.status(200).json({ message: 'Recipe deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to delete recipe' });
-  }
+// Serve index.html for all other routes (for SPA)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// PUT (update) a recipe
-app.put('/recipes/:id', upload.single('image'), async (req, res) => {
-  const { title, ingredients, instructions } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : req.body.existingImage;
-
-  if (!title || !ingredients || !instructions) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
-
-  try {
-    const updatedRecipe = await Recipe.findByIdAndUpdate(
-      req.params.id,
-      {
-        title,
-        ingredients: ingredients.split(',').map((item) => item.trim()),
-        instructions,
-        image,
-      },
-      { new: true }
-    );
-
-    if (!updatedRecipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
-    }
-
-    res.status(200).json(updatedRecipe);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to update recipe' });
-  }
-});
-
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// Start Server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
