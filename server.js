@@ -27,17 +27,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Multer config for file uploads
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, 'public', 'uploads');
-    fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'public', 'uploads'));
   },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '_');
-    cb(null, uniqueName);
-  }
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
 });
-const upload = multer({ storage });
+
+const upload = multer({ storage: storage });
+
 
 // Routes
 
@@ -53,24 +53,24 @@ app.get('/recipes', async (req, res) => {
 
 // POST new recipe
 app.post('/recipes', upload.single('coverImage'), async (req, res) => {
+  const { title, ingredients, instructions } = req.body;
+  const coverImage = req.file ? `/uploads/${req.file.filename}` : '';
+
+  const newRecipe = new Recipe({
+    title,
+    ingredients: ingredients.split(',').map(ingredient => ingredient.trim()),
+    instructions,
+    image: coverImage
+  });
+
   try {
-    const { title, ingredients, instructions } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : '';
-
-    const newRecipe = new Recipe({
-      title,
-      ingredients: ingredients.split(',').map(i => i.trim()),
-      instructions,
-      image
-    });
-
-    await newRecipe.save();
-    res.status(201).json(newRecipe);
+    const savedRecipe = await newRecipe.save();
+    res.status(201).json(savedRecipe);
   } catch (err) {
-    console.error('Error adding recipe:', err);
     res.status(400).json({ error: 'Failed to add recipe' });
   }
 });
+
 
 // Catch-all route for SPA fallback
 app.get('*', (req, res) => {
@@ -78,8 +78,7 @@ app.get('*', (req, res) => {
 });
 
 // Connect to MongoDB and start server
-mongoose
-  .connect(process.env.MONGODB_URI, {
+mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
   })
